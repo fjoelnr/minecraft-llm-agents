@@ -30,7 +30,7 @@ using a **Model Context Protocol (MCP)**, **Agent-to-Agent (A2A)** messaging, an
    ```powershell
    git clone https://github.com/<YOUR_USERNAME>/minecraft-llm-agents.git
    cd minecraft-llm-agents
-````
+    ```
 
 3. **Start gateway**:
 
