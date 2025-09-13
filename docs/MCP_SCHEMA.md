@@ -19,4 +19,3 @@ The **Model Context Protocol (MCP)** ensures deterministic prompts for the LLM.
 * **Deterministic key order** (always the same order of keys).
 * **LLM outputs** must be strict JSON actions (validated).
 * **Team** section captures messages from A2A communication.
-
