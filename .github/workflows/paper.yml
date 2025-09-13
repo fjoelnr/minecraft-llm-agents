@@ -1,0 +1,33 @@
+name: Paper (manual or on main)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - "paper/**"
+
+jobs:
+  build-paper:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for style file
+        run: |
+          if [ ! -f paper/neurips_2023.sty ]; then
+            echo "neurips_2023.sty missing. Upload it to paper/ and re-run."
+            exit 0
+          fi
+      - name: Install TeX
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y latexmk texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended
+      - name: Build
+        run: |
+          cd paper
+          latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-pdf
+          path: paper/main.pdf
