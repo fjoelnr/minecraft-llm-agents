@@ -1,4 +1,4 @@
-from orchestrator.app import memory
+from app import memory
 
 def test_memory_add_and_query():
     memory.add_memory("recipe: planks = log * 4")
