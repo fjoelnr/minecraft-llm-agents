@@ -15,7 +15,11 @@ class A2AMessage(BaseModel):
     qty: int | None = None
 
 def make_request(sender: str, receiver: str, task: str, item: str, qty: int) -> Dict[str, Any]:
-    return A2AMessage(sender=sender, receiver=receiver, kind="REQUEST", task=task, item=item, qty=qty).dict()
+    return A2AMessage(
+        sender=sender, receiver=receiver, kind="REQUEST", task=task, item=item, qty=qty
+    ).model_dump()
 
 def make_offer(sender: str, receiver: str, item: str, qty: int) -> Dict[str, Any]:
-    return A2AMessage(sender=sender, receiver=receiver, kind="OFFER", item=item, qty=qty).dict()
+    return A2AMessage(
+        sender=sender, receiver=receiver, kind="OFFER", item=item, qty=qty
+    ).model_dump()

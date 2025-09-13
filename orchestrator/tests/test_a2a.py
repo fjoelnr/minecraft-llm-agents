@@ -1,4 +1,4 @@
-from orchestrator.app import a2a
+from app import a2a
 
 def test_make_request_and_offer():
     req = a2a.make_request("A", "B", "collect", "wood", 5)
