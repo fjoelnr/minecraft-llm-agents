@@ -31,3 +31,16 @@ Example:
   ```
 * Current behavior: Echoes message back (mock).
 * Later: Full Mineflayer integration.
+
+### Memory (Vector/RAG)
+
+- `POST /memory/add`
+  - body: `{ "text": "...", "kind": "note|recipe|...", "metadata": { "seed": "abc" } }`
+  - returns: `{ "ok": true, "id": "m_1" }`
+
+- `POST /memory/query`
+  - body: `{ "query": "planks", "top_k": 3 }`
+  - returns: `{ "ok": true, "items": [ { id, text, metadata, distance }, ... ] }`
+
+- `POST /step?use_memory=true`
+  - injects top-k snippets into `mcp.rag_snippets`.

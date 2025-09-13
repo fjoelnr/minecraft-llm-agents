@@ -4,10 +4,11 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 
 from .mcp import build_mcp, mcp_json_schema, validate_mcp
+from .memory_vec import add_memory as vec_add_memory, query_memory as vec_query_memory
 from .schemas import Action
 
 app = FastAPI(title="MCP-Craft Orchestrator", version="0.2.0")
@@ -30,6 +31,17 @@ class StepResponse(BaseModel):
     note: str | None = None
 
 
+class MemoryAddRequest(BaseModel):
+    text: str
+    kind: str | None = "note"
+    metadata: dict[str, Any] | None = None
+
+
+class MemoryQueryRequest(BaseModel):
+    query: str
+    top_k: int = 3
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "ts": time.time()}
@@ -49,9 +61,19 @@ def get_state(agent_id: str = "A"):
 
 
 @app.post("/step", response_model=StepResponse)
-def step(req: StepRequest):
+def step(
+    req: StepRequest, execute: bool = Query(default=False), use_memory: bool = Query(default=False)
+):
     # 1) Build deterministic MCP
     mcp = build_mcp(req.agent_id, req.goal)
+
+    # optionaler RAG-Hook
+    if use_memory:
+        try:
+            hits = vec_query_memory(req.goal, top_k=3)
+            mcp["rag_snippets"] = [h["text"] for h in hits]
+        except Exception as _:
+            mcp["rag_snippets"] = []
 
     # 2) Validate MCP
     ok, err = validate_mcp(mcp)
@@ -85,3 +107,21 @@ def step(req: StepRequest):
         mcp_snapshot=mcp,
         note="feat/mcp",
     )
+
+
+@app.post("/memory/add")
+def memory_add(req: MemoryAddRequest):
+    try:
+        mem_id = vec_add_memory(req.text, kind=req.kind or "note", metadata=req.metadata or {})
+        return {"ok": True, "id": mem_id}
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail={"memory_error": str(e)}) from e
+
+
+@app.post("/memory/query")
+def memory_query(req: MemoryQueryRequest):
+    try:
+        items = vec_query_memory(req.query, top_k=req.top_k)
+        return {"ok": True, "items": items}
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail={"memory_error": str(e)}) from e
