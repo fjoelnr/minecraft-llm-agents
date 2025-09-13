@@ -1,4 +1,7 @@
-import sys, re, pathlib
+import sys
+import re
+import pathlib
+
 
 def extract(changelog_path: pathlib.Path, version: str) -> str:
     text = changelog_path.read_text(encoding="utf-8")
@@ -6,11 +9,15 @@ def extract(changelog_path: pathlib.Path, version: str) -> str:
     ver = version[1:] if version.startswith("v") else version
 
     # Match '## [X.Y.Z]' headings and capture content until next '## [' or end
-    pattern = re.compile(rf"^##\s*\[{re.escape(ver)}\].*?$([\s\S]*?)(?=^\s*##\s*\[|\Z)", re.MULTILINE)
+    pattern = re.compile(
+        rf"^##\s*\[{re.escape(ver)}\].*?$([\s\S]*?)(?=^\s*##\s*\[|\Z)", re.MULTILINE
+    )
     m = pattern.search(text)
     if not m:
         # fallback: try plain '## X.Y.Z'
-        pattern2 = re.compile(rf"^##\s*{re.escape(ver)}.*?$([\s\S]*?)(?=^\s*##\s*|\Z)", re.MULTILINE)
+        pattern2 = re.compile(
+            rf"^##\s*{re.escape(ver)}.*?$([\s\S]*?)(?=^\s*##\s*|\Z)", re.MULTILINE
+        )
         m = pattern2.search(text)
     if not m:
         print(f"⚠️  Version {ver} not found in CHANGELOG.md", file=sys.stderr)
@@ -20,6 +27,7 @@ def extract(changelog_path: pathlib.Path, version: str) -> str:
     content = m.group(1).strip()
     header = f"## {version}\n"
     return f"{header}\n{content}\n"
+
 
 def main():
     if len(sys.argv) < 2:
@@ -31,6 +39,7 @@ def main():
         print("CHANGELOG.md not found", file=sys.stderr)
         sys.exit(1)
     print(extract(path, version))
+
 
 if __name__ == "__main__":
     main()

@@ -2,10 +2,10 @@
 
 ## Orchestrator (FastAPI)
 
-- `GET /health`  
+- `GET /health`
   Returns `{"status":"ok","ts":...}`
 
-- `POST /step {goal, agent_id}`  
+- `POST /step {goal, agent_id}`
   Returns JSON with:
   - `action`: suggested action (e.g., chat/mine/craft)
   - `mcp_snapshot`: full MCP state for that step

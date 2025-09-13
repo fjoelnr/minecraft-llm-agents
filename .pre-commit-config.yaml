@@ -1,11 +1,35 @@
 repos:
-  - repo: https://github.com/psf/black
-    rev: 24.8.0
+  # --- Code Hygiene (Whitespace, EOF, YAML/JSON) ---
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
     hooks:
-      - id: black
-        args: [--line-length=100]
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+
+  # --- Python: Ruff (Lint/Fixes) ---
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
+    rev: v0.13.0
     hooks:
       - id: ruff
-        args: [--fix]
+        args: ["--fix"]   # auto-fix, wo möglich
+        additional_dependencies: []
+
+  # --- Python: Black (Format) ---
+  - repo: https://github.com/psf/black
+    rev: 25.1.0
+    hooks:
+      - id: black
+        args: ["--line-length=100"]
+
+  # --- Node: ESLint im bot-gateway (nur bei JS/TS-Änderungen) ---
+  - repo: local
+    hooks:
+      - id: eslint-gateway
+        name: eslint (bot-gateway)
+        language: system
+        entry: npm run -s lint --prefix bot-gateway
+        pass_filenames: false
+        types_or: [javascript, jsx, ts, tsx]
+        files: ^bot-gateway/.*\.(js|cjs|mjs|ts|tsx)$
