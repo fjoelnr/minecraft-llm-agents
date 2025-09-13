@@ -7,25 +7,21 @@ import chromadb
 from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
 
-# Local, persistent DB under repo folder
+# Persistent DB unter Repo-Root
 _DB_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".chroma"))
 os.makedirs(_DB_DIR, exist_ok=True)
 
-# Singletons (simple module-scope cache)
 _client: chromadb.Client | None = None
 _model: SentenceTransformer | None = None
-_COLLECTION_NAME = "mcp_mem_v1"
+
+# Default-Collection-Name
+DEFAULT_COLLECTION = "mem_general_v1"
 
 
 def get_client() -> chromadb.Client:
     global _client
     if _client is None:
-        _client = chromadb.Client(
-            Settings(
-                persist_directory=_DB_DIR,
-                is_persistent=True,
-            )
-        )
+        _client = chromadb.Client(Settings(persist_directory=_DB_DIR, is_persistent=True))
     return _client
 
 
@@ -37,25 +33,26 @@ def get_model(name: str = "sentence-transformers/all-MiniLM-L6-v2") -> SentenceT
 
 
 def _embeddings(texts: list[str]) -> list[list[float]]:
-    model = get_model()
-    # normalize_embeddings in Chroma handles cosine, we just provide vectors
-    vecs = model.encode(texts, normalize_embeddings=True).tolist()
+    vecs = get_model().encode(texts, normalize_embeddings=True).tolist()
     return vecs
 
 
-def _collection():
+def _get_or_create_collection(name: str):
     cli = get_client()
-    if _COLLECTION_NAME not in [c.name for c in cli.list_collections()]:
-        return cli.create_collection(name=_COLLECTION_NAME, metadata={"hnsw:space": "cosine"})
-    return cli.get_collection(_COLLECTION_NAME)
+    names = [c.name for c in cli.list_collections()]
+    if name not in names:
+        return cli.create_collection(name=name, metadata={"hnsw:space": "cosine"})
+    return cli.get_collection(name)
 
 
-def add_memory(text: str, kind: str = "note", metadata: dict[str, Any] | None = None) -> str:
-    """
-    Adds a single memory item; returns the generated id.
-    """
-    col = _collection()
-    doc_id = f"m_{col.count() + 1}"
+def add_memory(
+    text: str,
+    kind: str = "note",
+    metadata: dict[str, Any] | None = None,
+    collection: str = DEFAULT_COLLECTION,
+) -> str:
+    col = _get_or_create_collection(collection)
+    doc_id = f"{collection}__{col.count() + 1}"
     col.add(
         ids=[doc_id],
         documents=[text],
@@ -65,16 +62,33 @@ def add_memory(text: str, kind: str = "note", metadata: dict[str, Any] | None = 
     return doc_id
 
 
-def query_memory(query: str, top_k: int = 3) -> list[dict[str, Any]]:
-    col = _collection()
+def add_batch(
+    texts: list[str],
+    kind: str = "note",
+    metadatas: list[dict[str, Any]] | None = None,
+    collection: str = DEFAULT_COLLECTION,
+) -> list[str]:
+    if not texts:
+        return []
+    col = _get_or_create_collection(collection)
+    base = col.count()
+    ids = [f"{collection}__{base + i + 1}" for i in range(len(texts))]
+    md = metadatas if metadatas is not None else [{"kind": kind} for _ in texts]
+    col.add(ids=ids, documents=texts, metadatas=md, embeddings=_embeddings(texts))
+    return ids
+
+
+def query_memory(
+    query: str, top_k: int = 3, collection: str = DEFAULT_COLLECTION
+) -> list[dict[str, Any]]:
+    col = _get_or_create_collection(collection)
     res = col.query(
         query_embeddings=_embeddings([query]),
         n_results=top_k,
-        include=["documents", "metadatas", "distances"],  # <- "ids" entfernt
+        include=["documents", "metadatas", "distances"],
     )
     out: list[dict[str, Any]] = []
-    # ids sind trotzdem in res enthalten
-    for i in range(len(res["ids"][0])):
+    for i in range(len(res["documents"][0])):
         out.append(
             {
                 "id": res["ids"][0][i],
@@ -84,3 +98,17 @@ def query_memory(query: str, top_k: int = 3) -> list[dict[str, Any]]:
             }
         )
     return out
+
+
+def stats(collection: str = DEFAULT_COLLECTION) -> dict[str, Any]:
+    col = _get_or_create_collection(collection)
+    return {"collection": collection, "count": col.count(), "persist_dir": _DB_DIR}
+
+
+def drop_collection(collection: str) -> bool:
+    get_client().delete_collection(collection)
+    return True
+
+
+def list_collections() -> list[str]:
+    return [c.name for c in get_client().list_collections()]

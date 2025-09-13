@@ -34,6 +34,20 @@ Example:
 
 ### Memory (Vector/RAG)
 
+### Memory (Vector/RAG) — Collections & Batch
+
+- `GET /memory/collections`
+  - list available collections
+- `GET /memory/stats?collection=mem_general_v1`
+  - item count, persist dir
+- `DELETE /memory/collection?collection=mem_foo`
+  - drop a collection
+
+- `POST /memory/add_batch`
+  ```json
+  { "texts": ["recipe: ...", "tip: ..."], "kind": "note", "metadatas": [{"src":"..."}], "collection": "mem_recipes_v1" }
+  ```
+
 - `POST /memory/add`
   - body: `{ "text": "...", "kind": "note|recipe|...", "metadata": { "seed": "abc" } }`
   - returns: `{ "ok": true, "id": "m_1" }`
@@ -44,3 +58,6 @@ Example:
 
 - `POST /step?use_memory=true`
   - injects top-k snippets into `mcp.rag_snippets`.
+
+- `POST /step?use_memory=true&mem_collection=mem_recipes_v1`
+  - injects RAG snippets from the given collection
