@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 paper/*.pdf
 paper/build/
+orchestrator/*.egg-info/
