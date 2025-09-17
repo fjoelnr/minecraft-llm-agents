@@ -3,8 +3,6 @@ from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.memory_vec import DEFAULT_COLLECTION
 
-pytest.mark.asyncio
-
 
 @pytest.mark.asyncio
 async def test_add_and_query_memory_note():

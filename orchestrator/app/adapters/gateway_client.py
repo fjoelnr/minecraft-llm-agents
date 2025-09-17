@@ -9,6 +9,7 @@ try:
 except Exception:  # pragma: no cover
     websockets = None  # optional in Tests/CI
 
+
 class GatewayClient:
     """Minimaler WS-Client zum bot-gateway.
     In Tests/CI liefert er einen Dry-Run, wenn kein Gateway erreichbar ist oder websockets fehlt.
