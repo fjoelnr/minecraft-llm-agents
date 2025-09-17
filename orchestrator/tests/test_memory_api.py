@@ -4,8 +4,9 @@ from app.main import app
 from app.memory_vec import DEFAULT_COLLECTION
 
 
-@pytest.mark.asyncio
-async def test_add_and_query_memory_note():
+@pytest.mark.anyio
+@pytest.mark.parametrize("anyio_backend", ["asyncio"])  # << fix: nur asyncio
+async def test_add_and_query_memory_note(anyio_backend):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         # Add
