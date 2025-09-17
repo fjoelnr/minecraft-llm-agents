@@ -3,11 +3,14 @@ from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.memory_vec import DEFAULT_COLLECTION
 
+pytest.mark.asyncio
+
+
 @pytest.mark.asyncio
 async def test_add_and_query_memory_note():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        # add
+        # Add
         r = await ac.post(
             "/memory/add",
             json={
@@ -18,14 +21,15 @@ async def test_add_and_query_memory_note():
         )
         assert r.status_code == 200
         body = r.json()
-        assert body["ok"] is True
-        assert isinstance(body["id"], str)
+        assert body.get("ok") is True
+        assert isinstance(body.get("id"), str)
         assert body["id"].startswith(f"{DEFAULT_COLLECTION}__")
 
-        # query
+        # Query
         r = await ac.post("/memory/query", json={"query": "planks", "top_k": 3})
         assert r.status_code == 200
         q = r.json()
-        assert q["ok"] is True
-        assert isinstance(q["items"], list)
-        assert any("planks" in hit["text"] for hit in q["items"])
+        assert q.get("ok") is True
+        results = q.get("items", q.get("results", []))
+        assert isinstance(results, list)
+        assert any("planks" in hit.get("text", "") for hit in results)

@@ -7,14 +7,11 @@ from typing import Any
 try:
     import websockets  # type: ignore
 except Exception:  # pragma: no cover
-    websockets = None  # optional in tests
-
+    websockets = None  # optional in Tests/CI
 
 class GatewayClient:
-    """
-    Leichter WS-Client für das bot-gateway.
-    Wenn kein Gateway läuft oder websockets fehlt, liefern wir einen Dry-Run zurück,
-    damit Tests nicht hart ausfallen.
+    """Minimaler WS-Client zum bot-gateway.
+    In Tests/CI liefert er einen Dry-Run, wenn kein Gateway erreichbar ist oder websockets fehlt.
     """
 
     def __init__(self, url: str = "ws://localhost:3000", timeout_s: float = 2.5) -> None:
@@ -25,7 +22,6 @@ class GatewayClient:
         # Offline-/CI-Fallback
         if websockets is None:
             return {"ok": True, "dry_run": True, "action": action}
-
         try:
             async with websockets.connect(self.url) as ws:  # type: ignore[attr-defined]
                 await ws.send(json.dumps(action))
