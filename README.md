@@ -9,14 +9,14 @@ using a **Model Context Protocol (MCP)**, **Agent-to-Agent (A2A)** messaging, an
 
 ## 🌱 Branching Strategy
 
-- **`main`** → stable, tagged releases (e.g. `v0.1.0`).  
-- **`dev`** → active development branch.  
-- **Feature branches** → always branched from `dev`, merged back into `dev` via PR.  
-  Example:  
-  - `feat/mcp`  
-  - `feat/a2a`  
-  - `feat/memory`  
-  - `paper/...`  
+- **`main`** → stable, tagged releases (e.g. `v0.1.0`).
+- **`dev`** → active development branch.
+- **Feature branches** → always branched from `dev`, merged back into `dev` via PR.
+  Example:
+  - `feat/mcp`
+  - `feat/a2a`
+  - `feat/memory`
+  - `paper/...`
 
 ---
 

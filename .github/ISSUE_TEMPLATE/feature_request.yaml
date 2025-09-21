@@ -1,0 +1,36 @@
+name: ✨ Feature Request
+description: Suggest a new feature, improvement, or idea
+title: "[Feature]: "
+labels: ["enhancement"]
+assignees: []
+body:
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: Target Milestone
+      description: Which milestone should this belong to?
+      options:
+        - v0.3.0 – Memory
+        - v0.4.0 – A2A/Gateway
+        - v0.5.0 – Experiment Layer
+        - v0.6.0 – Integration Minecraft
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What is this feature about?
+      placeholder: e.g. Add /memory/add endpoint for Chroma integration
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: Provide additional context, references, or pseudocode
+      placeholder: Why is this useful? Any references (papers, repos)?
+    validations:
+      required: false

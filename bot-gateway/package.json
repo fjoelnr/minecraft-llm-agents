@@ -4,9 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node ./src/index.js"
+    "dev": "node ./src/index.js",
+    "lint": "eslint ."
   },
   "dependencies": {
     "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "eslint": "8.57.0",
+    "eslint-config-standard": "17.1.0",
+    "eslint-plugin-import": "2.29.1",
+    "eslint-plugin-n": "15.7.0",
+    "eslint-plugin-promise": "6.1.1"
   }
 }
