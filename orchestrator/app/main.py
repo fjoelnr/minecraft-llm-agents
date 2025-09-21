@@ -27,9 +27,12 @@ from .memory_vec import (
     query_memory as vec_query_memory,
     stats as vec_stats,
 )
+from .routes import a2a as a2a_routes
 from .schemas import Action
 
-app = FastAPI(title="MCP-Craft Orchestrator", version="0.3.0")
+app = FastAPI(title="MCP-Craft Orchestrator", version="0.4.0")
+
+app.include_router(a2a_routes.router)
 
 # In-memory state store (per agent)
 _STATE: dict[str, dict[str, Any]] = {}
