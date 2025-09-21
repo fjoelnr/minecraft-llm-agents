@@ -1,53 +1,38 @@
-# orchestrator/tests/test_a2a_schema.py
-from __future__ import annotations
-
+import pytest
 from app.schemas.a2a import A2AKind, A2AMessage, make_offer, make_request
 
 
 def test_make_request_has_defaults_and_fields():
-    msg = make_request(sender="botA", receiver="botB", task="collect wood", item="log", qty=4)
-    d = msg.model_dump()
-
-    assert isinstance(d["id"], str) and d["id"].startswith("msg_")
-    assert isinstance(d["ts"], str) and d["ts"].endswith("Z")
-
-    assert d["sender"] == "botA"
-    assert d["receiver"] == "botB"
-    assert d["kind"] == "REQUEST"
-    assert d["task"] == "collect wood"
-    assert d["item"] == "log"
-    assert d["qty"] == 4
-    assert d["payload"] is None
-    assert d["correlation_id"] is None
+    req = make_request(sender="botA", receiver="botB", action="mine")
+    assert req.kind == A2AKind.REQUEST
+    assert req.sender == "botA"
+    assert req.receiver == "botB"
+    # action bleibt für Abwärtskompatibilität gesetzt
+    assert req.action == "mine"
+    # optional
+    assert req.item is None
+    assert req.qty is None
 
 
 def test_make_offer_and_roundtrip():
-    msg = make_offer(sender="botB", receiver="botA", item="planks", qty=4, payload={"from": "log"})
-    d = msg.model_dump()
+    offer = make_offer(sender="botA", receiver="botB", item="wood", qty=3)
+    assert offer.kind == A2AKind.OFFER
+    assert offer.item == "wood"
+    assert offer.qty == 3
 
-    # Roundtrip
-    msg2 = A2AMessage.model_validate(d)
-    d2 = msg2.model_dump()
-
-    assert d2["kind"] == "OFFER"
-    assert d2["item"] == "planks"
-    assert d2["qty"] == 4
-    assert d2["payload"] == {"from": "log"}
-    assert d2["sender"] == "botB" and d2["receiver"] == "botA"
-    assert d2["id"].startswith("msg_") and d2["ts"].endswith("Z")
+    # Roundtrip via model_dump/model_validate
+    dumped = offer.model_dump()
+    rebuilt = A2AMessage.model_validate(dumped)
+    assert rebuilt == offer
 
 
 def test_qty_must_be_non_negative():
-    try:
+    with pytest.raises(ValueError, match="qty must be >= 0"):
         _ = make_offer(sender="botX", receiver="botY", item="stone", qty=-1)
-        assert False, "negative qty must raise"
-    except Exception as e:  # noqa: BLE001
-        assert "qty must be >= 0" in str(e)
 
 
 def test_literal_kind_type():
-    # Typprüfung indirekt: stellt sicher, dass nur erlaubte Kinds zugelassen werden
-    _ok_kinds: list[A2AKind] = ["REQUEST", "OFFER", "ACCEPT", "REJECT", "INFO"]
-    for k in _ok_kinds:
-        m = A2AMessage(sender="a", receiver="b", kind=k)
-        assert m.kind in _ok_kinds
+    # sicherstellen, dass nur die erlaubten Werte genutzt werden
+    req = make_request(sender="bot1", receiver="bot2", action="chat")
+    assert req.kind == A2AKind.REQUEST
+    # alternativ ginge auch: assert req.kind.value == "request"

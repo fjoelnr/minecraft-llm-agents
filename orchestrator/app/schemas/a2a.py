@@ -1,50 +1,49 @@
-# orchestrator/app/schemas/a2a.py
 from __future__ import annotations
 
 import datetime as _dt
-import uuid
-from typing import Any, Literal
+import secrets
+from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator
 
-A2AKind = Literal["REQUEST", "OFFER", "ACCEPT", "REJECT", "INFO"]
+# -- helpers --------------------------------------------------------------
 
 
-def _now_iso_z() -> str:
-    # timezone-aware, stabil mit Z-Suffix
-    return _dt.datetime.now(_dt.UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
+def _new_id() -> str:
+    return f"a2a_{secrets.token_hex(6)}"
 
 
-def _gen_id() -> str:
-    return f"msg_{uuid.uuid4().hex}"
+def _now_ts() -> str:
+    # timezone-aware now, dann naive ISO + 'Z'
+    return _dt.datetime.now(_dt.UTC).replace(tzinfo=None).isoformat(timespec="microseconds") + "Z"
+
+
+# -- data model -----------------------------------------------------------
+
+
+class A2AKind(str, Enum):
+    REQUEST = "request"
+    OFFER = "offer"
 
 
 class A2AMessage(BaseModel):
-    """
-    Minimales, stabilisiertes A2A-Schema v1.
-
-    - id: stabile, clientseitige Message-ID
-    - ts: ISO8601 UTC Timestamp mit 'Z'
-    - sender/receiver: Agent-IDs (frei wählbar, z.B. 'botA', 'botB')
-    - kind: REQUEST | OFFER | ACCEPT | REJECT | INFO
-    - optionale Felder (task/item/qty) + payload (freies JSON)
-    - correlation_id: zum Verketten von Antworten auf eine ursprüngliche Nachricht
-    """
-
-    id: str = Field(default_factory=_gen_id)
-    ts: str = Field(default_factory=_now_iso_z)
-
+    id: str = Field(default_factory=_new_id)
+    kind: A2AKind
     sender: str
     receiver: str
-    kind: A2AKind
+    timestamp: str = Field(default_factory=_now_ts)
 
+    # content
+    action: str | None = None
+    # Backward-Compat: „task“ als Alias zu action (einige Tests/Caller nutzen das)
     task: str | None = None
+
     item: str | None = None
     qty: int | None = None
+    payload: dict | None = None
 
-    payload: dict[str, Any] | None = None
-    correlation_id: str | None = None
-
+    # Wichtig: sender/receiver NICHT hier hart validieren (Tests wollen kaputte
+    # Nachrichten bis zur API-Route durchreichen).
     @field_validator("qty")
     @classmethod
     def _qty_non_negative(cls, v: int | None) -> int | None:
@@ -53,41 +52,48 @@ class A2AMessage(BaseModel):
         return v
 
 
+# -- builders -------------------------------------------------------------
+
+
 def make_request(
+    *,
     sender: str,
     receiver: str,
-    task: str,
+    action: str | None = None,
+    task: str | None = None,  # Alias für action
     item: str | None = None,
     qty: int | None = None,
-    payload: dict[str, Any] | None = None,
-    correlation_id: str | None = None,
 ) -> A2AMessage:
+    """
+    Erzeugt eine REQUEST-Nachricht.
+    Wenn sowohl 'action' als auch 'task' gesetzt sind, gewinnt 'action'.
+    """
+    effective_action = action or task
     return A2AMessage(
+        kind=A2AKind.REQUEST,
         sender=sender,
         receiver=receiver,
-        kind="REQUEST",
+        action=effective_action,
         task=task,
         item=item,
         qty=qty,
-        payload=payload,
-        correlation_id=correlation_id,
     )
 
 
 def make_offer(
+    *,
     sender: str,
     receiver: str,
     item: str,
-    qty: int | None = None,
-    payload: dict[str, Any] | None = None,
-    correlation_id: str | None = None,
+    qty: int,
+    payload: dict | None = None,
 ) -> A2AMessage:
+    """Erzeugt eine OFFER-Nachricht."""
     return A2AMessage(
+        kind=A2AKind.OFFER,
         sender=sender,
         receiver=receiver,
-        kind="OFFER",
         item=item,
         qty=qty,
         payload=payload,
-        correlation_id=correlation_id,
     )
