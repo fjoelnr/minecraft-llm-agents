@@ -1,94 +1,106 @@
-# MCP-Craft: Local LLM Minecraft Agents (Windows 11)
+# MCP-Craft
 
-This repository contains a **practical, Windows-first** setup to run and evaluate LLM agents in Minecraft,
-using a **Model Context Protocol (MCP)**, **Agent-to-Agent (A2A)** messaging, and a **vector memory (RAG)**.
+Windows-first local LLM agents for Minecraft, built around a deterministic Model Context Protocol (MCP), Agent-to-Agent (A2A) coordination, and vector memory.
 
-> Goal: From zero → a working *experimental environment* with clear docs and reproducibility.
+This repository is an experimental engineering sandbox, not a polished end-user product. The goal is reproducible local agent experiments with a clear separation between the Minecraft-facing gateway and the Python orchestrator.
 
----
+## What It Does
 
-## 🌱 Branching Strategy
+- runs a FastAPI orchestrator for MCP planning, memory, and A2A flows
+- exposes a Node.js gateway layer for Minecraft-side messaging and future Mineflayer integration
+- provides starter experiment scenarios for evaluating agent behavior
+- keeps the stack local-first and inspectable for development and testing
 
-- **`main`** → stable, tagged releases (e.g. `v0.1.0`).
-- **`dev`** → active development branch.
-- **Feature branches** → always branched from `dev`, merged back into `dev` via PR.
-  Example:
-  - `feat/mcp`
-  - `feat/a2a`
-  - `feat/memory`
-  - `paper/...`
+## Current Focus
 
----
+The current focus is practical local experimentation:
 
-## 🚀 Quickstart
+- MCP-shaped agent context
+- strict JSON action flow
+- A2A coordination patterns
+- vector memory / retrieval support
+- reproducible Windows 11 setup
 
-1. **Install** (Windows 11):
-   - Java 17, Node.js ≥ 18, Python ≥ 3.11, Git
-   - (Optional) Docker Desktop (for Redis/Chroma services)
+## Quick Start
 
-2. **Clone & open** in VS Code:
-   ```powershell
-   git clone https://github.com/<YOUR_USERNAME>/minecraft-llm-agents.git
-   cd minecraft-llm-agents
-    ```
+1. Install Java 17, Node.js 18+, Python 3.11+, and Git.
+2. Clone the repository.
+3. Start the gateway:
 
-3. **Start gateway**:
-
-   ```powershell
-   cd bot-gateway
-   npm i
-   npm run dev
-   ```
-
-4. **Start orchestrator**:
-
-   ```powershell
-   cd orchestrator
-   python -m venv .venv
-   .\\.venv\\Scripts\\Activate.ps1
-   pip install -e .
-   uvicorn app.main:app --reload --port 8000
-   ```
-
-5. Open **Swagger UI** → [http://localhost:8000/docs](http://localhost:8000/docs)
-
----
-
-## 📂 Repository Layout
-
-```
-orchestrator/   # Python FastAPI orchestrator (MCP, Planner, Memory, A2A)
-bot-gateway/    # Node.js + (future) Mineflayer gateway (WS/RPC)
-server/         # Minecraft server configs (Paper/Fabric)
-docs/           # Beginner-friendly docs for setup & experiments
-scripts/        # Convenience scripts (PowerShell & Python)
-paper/          # NeurIPS-style paper (optional, research write-up)
-compose.yaml    # Optional services (Redis, Chroma)
+```powershell
+cd bot-gateway
+npm i
+npm run dev
 ```
 
----
+4. Start the orchestrator:
 
-## 🧪 Experiments
+```powershell
+cd orchestrator
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e .
+uvicorn app.main:app --reload --port 8000
+```
 
-We provide three starter scenarios:
+5. Open [http://localhost:8000/docs](http://localhost:8000/docs) and verify `/health`.
 
-* **S1** Shelter before first night
-* **S2** Stone pickaxe from scratch
-* **S3** Cooperative furnace + glass (A2A)
+Primary docs:
+- [docs/SETUP_WINDOWS.md](docs/SETUP_WINDOWS.md)
+- [docs/API.md](docs/API.md)
+- [docs/MCP_SCHEMA.md](docs/MCP_SCHEMA.md)
+- [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/STATUS.md](docs/STATUS.md)
 
-Details: [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md)
+## Architecture
 
----
+High-level flow:
 
-## 📑 Documentation
+1. The gateway handles Minecraft-facing communication and future bot integration.
+2. The orchestrator receives goals and context over HTTP.
+3. MCP structures the state passed into the planning loop.
+4. Memory and A2A components enrich decision-making.
+5. The system returns validated actions or guidance for the next step.
 
-* [Setup Guide (Windows 11)](docs/SETUP_WINDOWS.md)
-* [MCP Schema](docs/MCP_SCHEMA.md)
-* [API Overview](docs/API.md)
-* [Experiments](docs/EXPERIMENTS.md)
+Repository layout:
 
----
+```text
+bot-gateway/    Node.js gateway and Minecraft-facing entry point
+orchestrator/   FastAPI app for MCP, memory, schemas, and A2A logic
+docs/           setup, API, experiments, status, and architecture notes
+paper/          optional research write-up assets
+.agents/        ANR context, workflows, and guardrails
+```
 
-## 📜 License
+## Status
 
-MIT (see [LICENSE](LICENSE)).
+`minecraft-llm-agents` is an active prototype.
+
+- the orchestrator and test suite are present
+- the gateway is intentionally still a lighter-weight entry point
+- documentation is improving, but this is still a builder-oriented repo
+
+See [docs/STATUS.md](docs/STATUS.md) for the current project state.
+
+## ANR Context Layer
+
+This repository now includes a lightweight ANR-compatible context layer:
+
+- [AGENTS.md](AGENTS.md) for repo-wide context
+- [.agents/context-index.md](.agents/context-index.md) for navigation
+- [.agents/workflows/feature-development.md](.agents/workflows/feature-development.md) for execution flow
+- [.agents/guardrails/architecture-rules.md](.agents/guardrails/architecture-rules.md) for structural constraints
+
+The goal is simple: an agent should be able to enter the repo and understand how the system is organized before changing it.
+
+## Branching
+
+- `main` is the stable release branch
+- `develop` is the default integration branch
+- feature branches should branch from `develop` and merge back into `develop`
+- promotion from `develop` to `main` happens via reviewed pull request
+
+## License
+
+MIT, see [LICENSE](LICENSE).
