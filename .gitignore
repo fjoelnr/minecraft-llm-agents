@@ -24,3 +24,5 @@ sandbox-server/whitelist.json
 sandbox-server/firstrun.log
 sandbox-server/*.pid
 orchestrator/.venv/
+orchestrator/runs/
+sandbox-server/run.log

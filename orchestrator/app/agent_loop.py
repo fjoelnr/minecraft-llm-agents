@@ -26,9 +26,9 @@ from .schemas import Action
 
 
 async def tick(gateway: GatewayClient, agent_id: str, goal: str) -> dict[str, Any]:
-    """Run one perceive -> decide -> act cycle. Returns a structured trace."""
+    """Run one perceive -> decide -> act cycle for one agent. Returns a structured trace."""
     # 1) Perceive
-    obs_resp = await gateway.observe()
+    obs_resp = await gateway.observe(agent_id)
     obs = obs_resp.get("observation") if obs_resp.get("ok") else None
     if not obs:
         return {"ok": False, "stage": "observe", "detail": obs_resp}
@@ -50,8 +50,8 @@ async def tick(gateway: GatewayClient, agent_id: str, goal: str) -> dict[str, An
         decided = {"error": str(e)}
     latency_ms = round((time.time() - t0) * 1000)
 
-    # 4) Act
-    result = await gateway.execute_action(action)
+    # 4) Act (route to this agent)
+    result = await gateway.execute_action({**action, "agent": agent_id})
 
     return {
         "ok": True,
@@ -63,26 +63,63 @@ async def tick(gateway: GatewayClient, agent_id: str, goal: str) -> dict[str, An
     }
 
 
-async def run(goal: str, ticks: int, agent_id: str = "A", url: str | None = None) -> None:
+def _log_path() -> str:
+    runs = os.path.join(os.path.dirname(__file__), "..", "runs")
+    os.makedirs(runs, exist_ok=True)
+    return os.path.join(runs, f"run-{time.strftime('%Y%m%d-%H%M%S')}.jsonl")
+
+
+async def run(
+    goal: str,
+    agents: list[str],
+    ticks: int = 0,
+    minutes: float = 0.0,
+    url: str | None = None,
+) -> None:
+    """Drive one or more agents round-robin against the live gateway.
+
+    Each agent's tick is appended as a JSON line to runs/run-<ts>.jsonl so the run
+    can be observed/replayed. Stops after `ticks` rounds, or after `minutes`.
+    """
     gw = GatewayClient(
         url=url or os.getenv("GATEWAY_URL", "ws://localhost:3000"),
         timeout_s=float(os.getenv("GATEWAY_TIMEOUT", "60")),
     )
     interval = float(os.getenv("TICK_INTERVAL", "2"))
-    for i in range(ticks):
-        out = await tick(gw, agent_id, goal)
-        line = json.dumps(out, ensure_ascii=False)
-        print(f"[tick {i + 1}/{ticks}] {line[:400]}")
-        await asyncio.sleep(interval)
+    log_path = _log_path()
+    deadline = time.time() + minutes * 60 if minutes else None
+    print(f"goal: {goal}\nagents: {', '.join(agents)}\nlog: {os.path.abspath(log_path)}\n")
+
+    rnd = 0
+    with open(log_path, "a", encoding="utf-8") as log:
+        while True:
+            rnd += 1
+            for agent_id in agents:
+                out = await tick(gw, agent_id, goal)
+                record = {"ts": time.time(), "round": rnd, "agent": agent_id, "goal": goal, **out}
+                log.write(json.dumps(record, ensure_ascii=False) + "\n")
+                log.flush()
+                act = out.get("action", {})
+                res = out.get("result", {})
+                print(f"[r{rnd} {agent_id}] {json.dumps(act, ensure_ascii=False)} -> {res.get('type') or res.get('error')}")
+                await asyncio.sleep(interval)
+            if ticks and rnd >= ticks:
+                break
+            if deadline and time.time() >= deadline:
+                break
+    print(f"\nrun complete: {rnd} rounds, log at {os.path.abspath(log_path)}")
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Run the end-to-end agent loop.")
-    p.add_argument("--goal", default="Explore your surroundings and comment on what you see in chat.")
-    p.add_argument("--ticks", type=int, default=5)
-    p.add_argument("--agent", default="A")
+    p = argparse.ArgumentParser(description="Run the end-to-end multi-agent loop.")
+    p.add_argument("--goal", default="Explore the area and build a simple shelter.")
+    p.add_argument("--agents", default="Agent1,Agent2", help="comma-separated agent names")
+    p.add_argument("--ticks", type=int, default=0, help="number of rounds (0 = use --minutes)")
+    p.add_argument("--minutes", type=float, default=0.0, help="run duration in minutes")
     args = p.parse_args()
-    asyncio.run(run(args.goal, args.ticks, args.agent))
+    agents = [a.strip() for a in args.agents.split(",") if a.strip()]
+    ticks = args.ticks or (0 if args.minutes else 5)
+    asyncio.run(run(args.goal, agents, ticks=ticks, minutes=args.minutes))
 
 
 if __name__ == "__main__":
