@@ -31,3 +31,32 @@ class GatewayClient:
         except Exception:
             # Gateway nicht erreichbar → Dry-Run
             return {"ok": True, "dry_run": True, "action": action}
+
+    async def _request(self, payload: dict[str, Any]) -> dict[str, Any]:
+        if websockets is None:
+            return {"ok": False, "offline": True}
+        try:
+            async with websockets.connect(self.url) as ws:  # type: ignore[attr-defined]
+                await ws.send(json.dumps(payload))
+                msg = await asyncio.wait_for(ws.recv(), timeout=self.timeout_s)
+                return json.loads(msg)
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "error": str(e)}
+
+    async def observe(self, agent: str | None = None) -> dict[str, Any]:
+        """Pull the MCP-shaped observation for one embodied agent."""
+        payload: dict[str, Any] = {"type": "observe"}
+        if agent:
+            payload["agent"] = agent
+        return await self._request(payload)
+
+    async def scene(self) -> dict[str, Any]:
+        """Pull the whole-world view: all players, agents, and recent chat."""
+        return await self._request({"type": "scene"})
+
+    async def skill(self, name: str, args: dict[str, Any], agent: str | None = None) -> dict[str, Any]:
+        """Run a multi-step skill (collect/craft/place/equip) on an agent."""
+        payload: dict[str, Any] = {"type": "skill", "name": name, "args": args}
+        if agent:
+            payload["agent"] = agent
+        return await self._request(payload)

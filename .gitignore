@@ -5,3 +5,27 @@ __pycache__/
 paper/*.pdf
 paper/build/
 orchestrator/*.egg-info/
+
+# Sandbox server runtime artifacts (keep config + scripts, ignore the rest)
+sandbox-server/server.jar
+sandbox-server/agent-sandbox/
+sandbox-server/logs/
+sandbox-server/libraries/
+sandbox-server/versions/
+sandbox-server/world/
+sandbox-server/world_nether/
+sandbox-server/world_the_end/
+sandbox-server/crash-reports/
+sandbox-server/usercache.json
+sandbox-server/usernamecache.json
+sandbox-server/banned-*.json
+sandbox-server/ops.json
+sandbox-server/whitelist.json
+sandbox-server/firstrun.log
+sandbox-server/*.pid
+orchestrator/.venv/
+orchestrator/runs/
+sandbox-server/run.log
+bot-gateway/gateway.log
+bot-gateway/gateway.err.log
+bot-gateway/*.pid

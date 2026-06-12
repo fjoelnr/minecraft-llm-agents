@@ -15,7 +15,9 @@ class MCPEnv(BaseModel):
     pos: list[int] = Field(default_factory=lambda: [0, 64, 0])
     time_of_day: str = "noon"
     biome: str | None = None
+    standing_on: str | None = None
     nearby: list[str] = Field(default_factory=list)
+    nearby_blocks: list[str] = Field(default_factory=list)
 
 
 class MCPTeam(BaseModel):
@@ -52,6 +54,33 @@ def _order_mcp(d: dict[str, Any]) -> OrderedDict[str, Any]:
 
 def build_mcp(agent_id: str, goal: str, env: dict[str, Any] | None = None) -> dict[str, Any]:
     ctx = MCPContext(agent_id=agent_id, goal=goal, env=MCPEnv(**(env or {})))
+    return _order_mcp(ctx.model_dump())
+
+
+def build_mcp_from_obs(agent_id: str, goal: str, obs: dict[str, Any]) -> dict[str, Any]:
+    """Build a deterministic MCP context from a live gateway observation.
+
+    Maps the gateway's observation shape (see bot-gateway/src/mcAgent.js) onto MCPEnv
+    + inventory, tolerating missing fields.
+    """
+    env = MCPEnv(
+        pos=obs.get("pos") or [0, 64, 0],
+        time_of_day=obs.get("time_of_day") or "noon",
+        biome=obs.get("biome") or None,
+        standing_on=obs.get("standing_on") or None,
+        nearby=obs.get("nearby") or [],
+        nearby_blocks=obs.get("nearby_blocks") or [],
+    )
+    ctx = MCPContext(
+        agent_id=agent_id,
+        goal=goal,
+        env=env,
+        inventory=obs.get("inventory") or {},
+        team=MCPTeam(
+            teammates=obs.get("teammates") or [],
+            messages=obs.get("recent_chat") or [],
+        ),
+    )
     return _order_mcp(ctx.model_dump())
 
 
