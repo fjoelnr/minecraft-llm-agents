@@ -110,6 +110,7 @@ SKILL_INSTRUCTIONS = (
     '  {"skill":"craft","args":{"item":"<item>","count":<int>}}     craft (auto-handles the crafting table)\n'
     '  {"skill":"place","args":{"type":"<block>"}}                  place a block from inventory\n'
     '  {"skill":"equip","args":{"type":"<item>"}}                   equip a tool\n'
+    '  {"skill":"build_shelter","args":{}}                          build a small hut around yourself (needs ~24 solid blocks like dirt/cobblestone)\n'
     '  {"skill":"move","args":{"blocks":<int>}}                     walk forward to explore\n'
     '  {"skill":"chat","args":{"text":"<msg>"}}                     say something\n'
     '  {"skill":"done","args":{}}                                  goal already satisfied\n'
@@ -146,7 +147,7 @@ def plan_next_skill(
 
 
 _SKILL_KEYS = ("skill", "name", "tool", "action")
-_VALID_SKILLS = {"collect", "craft", "place", "equip", "move", "chat", "done"}
+_VALID_SKILLS = {"collect", "craft", "place", "equip", "build_shelter", "move", "chat", "done"}
 
 
 def coerce_skill(raw: Any) -> dict[str, Any]:

@@ -21,7 +21,7 @@ from . import llm
 from .adapters.gateway_client import GatewayClient
 from .mcp import build_mcp_from_obs
 
-_SKILL_NAMES = {"collect", "craft", "place", "equip"}
+_SKILL_NAMES = {"collect", "craft", "place", "equip", "build_shelter"}
 
 
 def _summary(result: dict[str, Any]) -> str:

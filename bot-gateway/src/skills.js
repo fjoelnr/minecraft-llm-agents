@@ -156,6 +156,86 @@ export async function place (bot, { type }) {
   }
 }
 
+// Solid blocks we are willing to build with, in preference order.
+const BUILD_MATERIALS = [
+  'cobblestone', 'dirt', 'stone', 'spruce_planks', 'oak_planks', 'birch_planks',
+  'jungle_planks', 'acacia_planks', 'dark_oak_planks', 'spruce_log', 'oak_log'
+]
+
+/**
+ * Build a small hut around the bot's current position: 8 wall columns (2 high)
+ * with one door gap, plus a 3x3 roof. Uses whatever solid blocks are in the
+ * inventory. The bot ends up standing inside its own shelter.
+ */
+export async function buildShelter (bot) {
+  const have = bot.inventory.items()
+    .filter((i) => BUILD_MATERIALS.includes(i.name))
+    .reduce((s, i) => s + i.count, 0)
+  if (have < 20) return { ok: false, error: `need ~24 solid blocks to build (have ${have}) — collect dirt/cobblestone/planks first` }
+
+  const c = bot.entity.position.floored()
+  const ring = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]
+  const door = [1, 0] // leave the +x middle column open as a doorway
+
+  let placedNew = 0
+  let preSolid = 0
+  const failedSpots = []
+  const spot = async (pos) => {
+    const r = await placeAt(bot, pos)
+    if (r === 'placed') placedNew++
+    else if (r === 'solid') preSolid++
+    else failedSpots.push([pos.x, pos.y, pos.z])
+  }
+  for (const dy of [0, 1]) {
+    for (const [dx, dz] of ring) {
+      if (dx === door[0] && dz === door[1]) continue
+      await spot(c.offset(dx, dy, dz))
+    }
+  }
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dz = -1; dz <= 1; dz++) {
+      await spot(c.offset(dx, 2, dz))
+    }
+  }
+
+  const filled = placedNew + preSolid
+  const ok = filled >= 17 // 23 spots total; a few gaps are survivable
+  return {
+    ok,
+    skill: 'build_shelter',
+    placed: placedNew,
+    already_solid: preSolid,
+    failed: failedSpots.length,
+    pos: [c.x, c.y, c.z],
+    ...(ok ? {} : { error: `shelter incomplete: ${filled}/23 spots filled` })
+  }
+}
+
+/** Fill `pos` with a build material. Returns 'placed' | 'solid' | false. */
+async function placeAt (bot, pos) {
+  const at = bot.blockAt(pos)
+  if (!at) return false
+  if (at.boundingBox === 'block') return 'solid' // terrain already covers this spot
+  const dirs = [[0, -1, 0], [0, 1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]]
+  let ref = null
+  let face = null
+  for (const [dx, dy, dz] of dirs) {
+    const n = bot.blockAt(pos.offset(dx, dy, dz))
+    if (n && n.boundingBox === 'block') { ref = n; face = new Vec3(-dx, -dy, -dz); break }
+  }
+  if (!ref) return false
+  const item = bot.inventory.items().find((i) => BUILD_MATERIALS.includes(i.name))
+  if (!item) return false
+  try {
+    await bot.equip(item, 'hand')
+    await bot.lookAt(pos.offset(0.5, 0.5, 0.5), true)
+    await bot.placeBlock(ref, face)
+    return 'placed'
+  } catch {
+    return false
+  }
+}
+
 /** Equip the named tool/item to the hand. */
 export async function equip (bot, { type }) {
   const item = bot.inventory.items().find((i) => i.name === type)
@@ -229,7 +309,7 @@ function freeSpotBeside (bot) {
   return null
 }
 
-export const SKILLS = { collect, craft, place, equip }
+export const SKILLS = { collect, craft, place, equip, build_shelter: buildShelter }
 export const SKILL_NAMES = Object.keys(SKILLS)
 
 export async function runSkill (bot, name, args = {}) {
