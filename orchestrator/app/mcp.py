@@ -55,6 +55,27 @@ def build_mcp(agent_id: str, goal: str, env: dict[str, Any] | None = None) -> di
     return _order_mcp(ctx.model_dump())
 
 
+def build_mcp_from_obs(agent_id: str, goal: str, obs: dict[str, Any]) -> dict[str, Any]:
+    """Build a deterministic MCP context from a live gateway observation.
+
+    Maps the gateway's observation shape (see bot-gateway/src/mcAgent.js) onto MCPEnv
+    + inventory, tolerating missing fields.
+    """
+    env = MCPEnv(
+        pos=obs.get("pos") or [0, 64, 0],
+        time_of_day=obs.get("time_of_day") or "noon",
+        biome=obs.get("biome") or None,
+        nearby=obs.get("nearby") or [],
+    )
+    ctx = MCPContext(
+        agent_id=agent_id,
+        goal=goal,
+        env=env,
+        inventory=obs.get("inventory") or {},
+    )
+    return _order_mcp(ctx.model_dump())
+
+
 def validate_mcp(raw: dict[str, Any]) -> tuple[bool, str | None]:
     try:
         MCPContext.model_validate(raw)

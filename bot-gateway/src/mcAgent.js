@@ -84,19 +84,41 @@ export class McAgent {
     }
   }
 
-  /** Walk roughly `blocks` blocks in the current facing direction. */
+  /**
+   * Walk roughly `blocks` blocks forward via control state. Deliberately avoids the
+   * pathfinder here: "explore a bit forward" should never fail on rough terrain, and
+   * pathfinding to a blind point ahead times out too easily. Pathfinding is reserved
+   * for goto()/mine() where a precise destination matters.
+   */
   async moveForward (blocks = 1) {
     const bot = this.bot
-    const yaw = bot.entity.yaw
-    const p = bot.entity.position
-    const target = {
-      x: p.x - Math.sin(yaw) * blocks,
-      y: p.y,
-      z: p.z + Math.cos(yaw) * blocks
-    }
-    await bot.pathfinder.goto(new goals.GoalNear(target.x, target.y, target.z, 1))
+    const start = bot.entity.position.clone()
+    const target = Math.max(1, Math.min(10, blocks))
+    const timeoutMs = Math.min(10000, 700 * target + 800)
+    bot.setControlState('forward', true)
+    bot.setControlState('jump', true) // hop small steps so we don't get stuck
+    await new Promise((resolve) => {
+      const iv = setInterval(() => {
+        if (bot.entity.position.distanceTo(start) >= target) {
+          clearInterval(iv)
+          clearTimeout(to)
+          resolve()
+        }
+      }, 100)
+      const to = setTimeout(() => {
+        clearInterval(iv)
+        resolve()
+      }, timeoutMs)
+    })
+    bot.setControlState('forward', false)
+    bot.setControlState('jump', false)
     const np = bot.entity.position
-    return { ok: true, type: 'move', pos: [Math.round(np.x), Math.round(np.y), Math.round(np.z)] }
+    return {
+      ok: true,
+      type: 'move',
+      moved: Number(np.distanceTo(start).toFixed(2)),
+      pos: [Math.round(np.x), Math.round(np.y), Math.round(np.z)]
+    }
   }
 
   /** Pathfind to a coordinate. */

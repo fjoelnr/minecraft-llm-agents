@@ -22,11 +22,12 @@ class ActionCraft(BaseModel):
 
 
 class Action(BaseModel):
-    type: Literal["chat", "mine", "craft"]
+    type: Literal["chat", "mine", "craft", "move"]
     text: str | None = None
     target: str | None = None
     recipe: str | None = None
     qty: int | None = None
+    blocks: int | None = None
 
     def normalize(self) -> dict[str, Any]:
         """Project into specific shape with required fields for logging/execution."""
@@ -36,4 +37,6 @@ class Action(BaseModel):
             return {"type": "mine", "target": self.target or "", "qty": self.qty or 1}
         if self.type == "craft":
             return {"type": "craft", "recipe": self.recipe or "", "qty": self.qty or 1}
+        if self.type == "move":
+            return {"type": "move", "blocks": self.blocks or 1}
         return {"type": "chat", "text": ""}

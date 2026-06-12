@@ -31,3 +31,15 @@ class GatewayClient:
         except Exception:
             # Gateway nicht erreichbar → Dry-Run
             return {"ok": True, "dry_run": True, "action": action}
+
+    async def observe(self) -> dict[str, Any]:
+        """Pull the current MCP-shaped observation from the gateway's embodied bot."""
+        if websockets is None:
+            return {"ok": False, "offline": True}
+        try:
+            async with websockets.connect(self.url) as ws:  # type: ignore[attr-defined]
+                await ws.send(json.dumps({"type": "observe"}))
+                msg = await asyncio.wait_for(ws.recv(), timeout=self.timeout_s)
+                return json.loads(msg)
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "error": str(e)}
