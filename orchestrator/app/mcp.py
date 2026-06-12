@@ -15,7 +15,9 @@ class MCPEnv(BaseModel):
     pos: list[int] = Field(default_factory=lambda: [0, 64, 0])
     time_of_day: str = "noon"
     biome: str | None = None
+    standing_on: str | None = None
     nearby: list[str] = Field(default_factory=list)
+    nearby_blocks: list[str] = Field(default_factory=list)
 
 
 class MCPTeam(BaseModel):
@@ -65,7 +67,9 @@ def build_mcp_from_obs(agent_id: str, goal: str, obs: dict[str, Any]) -> dict[st
         pos=obs.get("pos") or [0, 64, 0],
         time_of_day=obs.get("time_of_day") or "noon",
         biome=obs.get("biome") or None,
+        standing_on=obs.get("standing_on") or None,
         nearby=obs.get("nearby") or [],
+        nearby_blocks=obs.get("nearby_blocks") or [],
     )
     ctx = MCPContext(
         agent_id=agent_id,

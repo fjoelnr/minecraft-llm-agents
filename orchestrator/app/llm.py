@@ -28,7 +28,10 @@ ACTION_INSTRUCTIONS = (
     '  {"type":"chat","text":"<short message>"}\n'
     '  {"type":"move","blocks":<integer 1-10>}\n'
     '  {"type":"mine","target":"<block_name>","qty":<integer 1-8>}\n'
-    "Choose the action that best advances the goal. Prefer chat when unsure."
+    "The OBSERVATION field `nearby_blocks` lists resources you can see as "
+    '"name@distance" (e.g. "spruce_log@3"). To gather, `mine` a block name that '
+    "appears there. If `nearby_blocks` has no useful resource, `move` to look "
+    "elsewhere. Occasionally `chat` to narrate your intent. Advance the goal."
 )
 
 

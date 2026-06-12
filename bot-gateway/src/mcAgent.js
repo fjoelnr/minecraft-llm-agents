@@ -50,13 +50,17 @@ export class McAgent {
     const bot = this.bot
     if (!bot || !bot.entity) return { ready: false }
     const p = bot.entity.position
+    const mcData = minecraftData(bot.version)
     const here = bot.blockAt(p)
+    const under = bot.blockAt(p.offset(0, -1, 0))
     return {
       agent_id: this.opts.username,
       pos: [Math.round(p.x), Math.round(p.y), Math.round(p.z)],
       time_of_day: timeName(bot.time.timeOfDay),
-      biome: here?.biome?.name ?? null,
+      biome: biomeName(here, mcData),
+      standing_on: under?.name ?? null,
       nearby: nearbyNames(bot),
+      nearby_blocks: nearbyBlocks(bot, mcData),
       inventory: inventoryMap(bot),
       health: bot.health ?? null,
       food: bot.food ?? null
@@ -173,6 +177,40 @@ function nearbyNames (bot) {
     }
   }
   return names.slice(0, 20)
+}
+
+function biomeName (block, mcData) {
+  const b = block?.biome
+  if (!b) return null
+  if (b.name) return b.name
+  if (b.id != null && mcData.biomes?.[b.id]) return mcData.biomes[b.id].name
+  return null
+}
+
+// Block categories worth perceiving for "gather / build" goals.
+const WANTED_BLOCKS = [
+  'oak_log', 'birch_log', 'spruce_log', 'jungle_log', 'acacia_log', 'dark_oak_log',
+  'mangrove_log', 'cherry_log', 'stone', 'cobblestone', 'coal_ore', 'iron_ore',
+  'copper_ore', 'gold_ore', 'diamond_ore', 'sand', 'water'
+]
+
+/** Nearest instance of each interesting block type within range, as "name@dist". */
+function nearbyBlocks (bot, mcData) {
+  const ids = WANTED_BLOCKS.map((n) => mcData.blocksByName[n]?.id).filter((x) => x != null)
+  if (!ids.length) return []
+  const positions = bot.findBlocks({ matching: ids, maxDistance: 12, count: 48 })
+  const me = bot.entity.position
+  const nearest = {}
+  for (const pos of positions) {
+    const block = bot.blockAt(pos)
+    if (!block) continue
+    const d = pos.distanceTo(me)
+    if (!(block.name in nearest) || d < nearest[block.name]) nearest[block.name] = d
+  }
+  return Object.entries(nearest)
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, 8)
+    .map(([name, d]) => `${name}@${Math.round(d)}`)
 }
 
 function inventoryMap (bot) {
