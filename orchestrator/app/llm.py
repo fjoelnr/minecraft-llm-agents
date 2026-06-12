@@ -99,6 +99,93 @@ def coerce_action(raw: Any) -> dict[str, Any]:
     return out
 
 
+SKILL_INSTRUCTIONS = (
+    "You are the planner for a Minecraft agent. Choose the single NEXT skill that "
+    "best advances the GOAL, given the current STATE and what you have already done "
+    "(RECENT_STEPS). Think about prerequisites: to craft you need ingredients; a "
+    "wooden_pickaxe needs planks+sticks and a crafting table; to mine stone/ores you "
+    "need a pickaxe first.\n"
+    "Available skills:\n"
+    '  {"skill":"collect","args":{"type":"<block>","count":<int>}}  gather blocks (e.g. spruce_log, stone)\n'
+    '  {"skill":"craft","args":{"item":"<item>","count":<int>}}     craft (auto-handles the crafting table)\n'
+    '  {"skill":"place","args":{"type":"<block>"}}                  place a block from inventory\n'
+    '  {"skill":"equip","args":{"type":"<item>"}}                   equip a tool\n'
+    '  {"skill":"move","args":{"blocks":<int>}}                     walk forward to explore\n'
+    '  {"skill":"chat","args":{"text":"<msg>"}}                     say something\n'
+    '  {"skill":"done","args":{}}                                  goal already satisfied\n'
+    "Respond with a single minified JSON object and nothing else. Avoid repeating a "
+    "step that already succeeded."
+)
+
+
+def plan_next_skill(
+    mcp: dict[str, Any],
+    goal: str,
+    history: list[dict[str, Any]] | None = None,
+    model: str | None = None,
+    provider: str | None = None,
+) -> dict[str, Any]:
+    """Return the next skill call {skill, args} to advance the goal."""
+    provider = provider or os.getenv("LLM_PROVIDER", "ollama")
+    if provider == "dummy":
+        return {"skill": "chat", "args": {"text": f"(dummy) {goal}"}}
+
+    steps = history or []
+    recent = "\n".join(
+        f"  {i + 1}. {s.get('skill')}({s.get('args')}) -> {'ok' if s.get('ok') else 'fail'}: {s.get('summary', '')}"
+        for i, s in enumerate(steps[-8:])
+    ) or "  (none yet)"
+    prompt = (
+        f"GOAL: {goal}\n"
+        f"STATE:\n{json.dumps(mcp, ensure_ascii=False)}\n"
+        f"RECENT_STEPS:\n{recent}\n\n"
+        f"{SKILL_INSTRUCTIONS}"
+    )
+    raw = _ollama_chat(prompt, model or DEFAULT_MODEL)
+    return coerce_skill(raw)
+
+
+_SKILL_KEYS = ("skill", "name", "tool", "action")
+_VALID_SKILLS = {"collect", "craft", "place", "equip", "move", "chat", "done"}
+
+
+def coerce_skill(raw: Any) -> dict[str, Any]:
+    """Normalize a model's loose JSON onto {skill, args}."""
+    if not isinstance(raw, dict):
+        return {"skill": "chat", "args": {"text": str(raw)}}
+    name = None
+    for k in _SKILL_KEYS:
+        v = raw.get(k)
+        if isinstance(v, str) and v.lower().strip() in _VALID_SKILLS:
+            name = v.lower().strip()
+            break
+    name = name or "chat"
+    args = raw.get("args") if isinstance(raw.get("args"), dict) else {}
+    # tolerate flat fields (type/item/count/blocks/text at top level)
+    for k in ("type", "item", "count", "blocks", "text", "recipe", "target"):
+        if k in raw and k not in args:
+            args[k] = raw[k]
+    if "item" not in args and "target" in args:
+        args["item"] = args["target"]
+    return {"skill": name, "args": args}
+
+
+def _ollama_chat(prompt: str, model: str) -> dict[str, Any]:
+    resp = httpx.post(
+        f"{OLLAMA_URL}/api/chat",
+        json={
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "format": "json",
+            "options": {"temperature": 0.5},
+        },
+        timeout=float(os.getenv("LLM_TIMEOUT", "120")),
+    )
+    resp.raise_for_status()
+    return json.loads(resp.json()["message"]["content"])
+
+
 def _ollama_decide(mcp: dict[str, Any], goal: str, model: str) -> dict[str, Any]:
     prompt = (
         f"GOAL: {goal}\n"

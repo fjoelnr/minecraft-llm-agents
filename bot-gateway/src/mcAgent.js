@@ -1,6 +1,8 @@
 import mineflayer from 'mineflayer'
 import pathfinderPkg from 'mineflayer-pathfinder'
+import { plugin as collectBlock } from 'mineflayer-collectblock'
 import minecraftData from 'minecraft-data'
+import { runSkill } from './skills.js'
 
 const { pathfinder, Movements, goals } = pathfinderPkg
 
@@ -31,6 +33,7 @@ export class McAgent {
       const bot = mineflayer.createBot(this.opts)
       this.bot = bot
       bot.loadPlugin(pathfinder)
+      bot.loadPlugin(collectBlock)
 
       bot.once('spawn', () => {
         const mcData = minecraftData(bot.version)
@@ -64,6 +67,25 @@ export class McAgent {
       inventory: inventoryMap(bot),
       health: bot.health ?? null,
       food: bot.food ?? null
+    }
+  }
+
+  /** Run a named skill (collect/craft/place/equip) with args, bounded in time. */
+  async runSkill (name, args = {}) {
+    if (!this.ready) return { ok: false, error: 'agent not ready' }
+    const timeoutMs = Number(process.env.SKILL_TIMEOUT_MS || 75000)
+    let timer
+    const timeout = new Promise((resolve) => {
+      timer = setTimeout(() => resolve({ ok: false, error: `skill timeout after ${timeoutMs}ms` }), timeoutMs)
+    })
+    try {
+      return await Promise.race([runSkill(this.bot, name, args), timeout])
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) }
+    } finally {
+      clearTimeout(timer)
+      // stop any leftover movement so a timed-out skill doesn't leave the bot running
+      try { this.bot.pathfinder.setGoal(null) } catch {}
     }
   }
 

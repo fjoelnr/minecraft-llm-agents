@@ -1,8 +1,29 @@
 """Tests for the vertical-slice hardening: action coercion + obs->MCP mapping."""
 
-from app.llm import coerce_action
+from app.llm import coerce_action, coerce_skill
 from app.mcp import build_mcp_from_obs
 from app.schemas import Action
+
+
+def test_coerce_skill_basic_and_flat_args():
+    s = coerce_skill({"skill": "craft", "item": "wooden_pickaxe", "count": 1})
+    assert s == {"skill": "craft", "args": {"item": "wooden_pickaxe", "count": 1}}
+
+
+def test_coerce_skill_name_variants_and_nested_args():
+    s = coerce_skill({"action": "collect", "args": {"type": "spruce_log", "count": 3}})
+    assert s["skill"] == "collect"
+    assert s["args"]["type"] == "spruce_log"
+
+
+def test_coerce_skill_target_aliases_item():
+    s = coerce_skill({"skill": "craft", "target": "stick"})
+    assert s["args"]["item"] == "stick"
+
+
+def test_coerce_skill_unknown_defaults_to_chat():
+    assert coerce_skill({"skill": "fly_to_moon"})["skill"] == "chat"
+    assert coerce_skill("gibberish")["skill"] == "chat"
 
 
 def test_coerce_action_key_variant():

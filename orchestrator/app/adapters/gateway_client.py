@@ -53,3 +53,10 @@ class GatewayClient:
     async def scene(self) -> dict[str, Any]:
         """Pull the whole-world view: all players, agents, and recent chat."""
         return await self._request({"type": "scene"})
+
+    async def skill(self, name: str, args: dict[str, Any], agent: str | None = None) -> dict[str, Any]:
+        """Run a multi-step skill (collect/craft/place/equip) on an agent."""
+        payload: dict[str, Any] = {"type": "skill", "name": name, "args": args}
+        if agent:
+            payload["agent"] = agent
+        return await self._request(payload)

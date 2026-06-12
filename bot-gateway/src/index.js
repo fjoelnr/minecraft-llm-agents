@@ -64,7 +64,11 @@ wss.on('connection', (ws) => {
       return ws.send(JSON.stringify({ ok: true, observation: agent.getObservation() }))
     }
     try {
-      ws.send(JSON.stringify(await agent.execute(data)))
+      if (data.type === 'skill') {
+        ws.send(JSON.stringify(await agent.runSkill(data.name, data.args || {})))
+      } else {
+        ws.send(JSON.stringify(await agent.execute(data)))
+      }
     } catch (e) {
       ws.send(JSON.stringify({ ok: false, error: String(e?.message || e) }))
     }
