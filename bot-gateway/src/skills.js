@@ -33,15 +33,26 @@ export async function collect (bot, { type, count = 1 }) {
     }
   }
 
-  const before = countItem(bot, type)
+  // Success is measured by a full inventory diff, because many blocks drop a
+  // different item than their own name (stone -> cobblestone, coal_ore -> coal).
+  const before = inventorySnapshot(bot)
   const targets = positions.slice(0, count).map((p) => bot.blockAt(p)).filter(Boolean)
   try {
     await bot.collectBlock.collect(targets, { ignoreNoPath: true })
   } catch (e) {
     // partial success is fine; report what we got
   }
-  const gained = countItem(bot, type) - before
-  return { ok: gained > 0, skill: 'collect', type, gained, requested: count }
+  const gains = inventoryGains(before, inventorySnapshot(bot))
+  const gained = Object.values(gains).reduce((s, n) => s + n, 0)
+  return {
+    ok: gained > 0,
+    skill: 'collect',
+    type,
+    gained,
+    gains,
+    requested: count,
+    ...(gained === 0 ? { error: `dug but nothing collected (drops out of reach?)` } : {})
+  }
 }
 
 /**
@@ -157,6 +168,21 @@ export async function equip (bot, { type }) {
 
 function countItem (bot, name) {
   return bot.inventory.items().filter((i) => i.name === name).reduce((s, i) => s + i.count, 0)
+}
+
+function inventorySnapshot (bot) {
+  const snap = {}
+  for (const i of bot.inventory.items()) snap[i.name] = (snap[i.name] || 0) + i.count
+  return snap
+}
+
+function inventoryGains (before, after) {
+  const gains = {}
+  for (const [name, n] of Object.entries(after)) {
+    const d = n - (before[name] || 0)
+    if (d > 0) gains[name] = d
+  }
+  return gains
 }
 
 function findNearby (bot, name, dist) {
