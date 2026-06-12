@@ -72,3 +72,15 @@ def test_build_mcp_from_obs_tolerates_missing():
     mcp = build_mcp_from_obs("A", "goal", {})
     assert mcp["env"]["pos"] == [0, 64, 0]
     assert mcp["inventory"] == {}
+    assert mcp["team"] == {"teammates": [], "messages": []}
+
+
+def test_build_mcp_from_obs_maps_team_context():
+    obs = {
+        "pos": [1, 2, 3],
+        "teammates": ["Agent2@[5,70,9]"],
+        "recent_chat": ["Agent2: ich sammle Holz"],
+    }
+    mcp = build_mcp_from_obs("Agent1", "goal", obs)
+    assert mcp["team"]["teammates"] == ["Agent2@[5,70,9]"]
+    assert mcp["team"]["messages"] == ["Agent2: ich sammle Holz"]

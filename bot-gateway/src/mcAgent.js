@@ -25,6 +25,7 @@ export class McAgent {
     }
     this.bot = null
     this.ready = false
+    this.chatLog = [] // ring buffer of chat heard from OTHER players/agents
   }
 
   /** Connect and resolve once the bot has spawned into the world. */
@@ -39,6 +40,11 @@ export class McAgent {
         const mcData = minecraftData(bot.version)
         const moves = new Movements(bot, mcData)
         bot.pathfinder.setMovements(moves)
+        bot.on('chat', (username, message) => {
+          if (username === bot.username) return
+          this.chatLog.push({ from: username, text: message, ts: Date.now() })
+          if (this.chatLog.length > 20) this.chatLog.shift()
+        })
         this.ready = true
         resolve(this)
       })
@@ -66,7 +72,8 @@ export class McAgent {
       nearby_blocks: nearbyBlocks(bot, mcData),
       inventory: inventoryMap(bot),
       health: bot.health ?? null,
-      food: bot.food ?? null
+      food: bot.food ?? null,
+      recent_chat: this.chatLog.slice(-5).map((c) => `${c.from}: ${c.text}`)
     }
   }
 

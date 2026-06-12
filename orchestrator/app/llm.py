@@ -115,7 +115,10 @@ SKILL_INSTRUCTIONS = (
     '  {"skill":"chat","args":{"text":"<msg>"}}                     say something\n'
     '  {"skill":"done","args":{}}                                  goal already satisfied\n'
     "Respond with a single minified JSON object and nothing else. Avoid repeating a "
-    "step that already succeeded."
+    "step that already succeeded.\n"
+    "STATE.team shows your teammates (name@position) and recent chat messages. You "
+    "may coordinate: use chat to tell teammates what you are doing or to split work "
+    "(e.g. one gathers wood while the other builds). React to teammate messages."
 )
 
 

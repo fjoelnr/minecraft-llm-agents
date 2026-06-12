@@ -61,7 +61,15 @@ wss.on('connection', (ws) => {
       return ws.send(JSON.stringify({ ok: false, error: `unknown agent: ${data.agent}` }))
     }
     if (data.type === 'observe') {
-      return ws.send(JSON.stringify({ ok: true, observation: agent.getObservation() }))
+      const observation = agent.getObservation()
+      // A2A context: where the other agents are right now
+      observation.teammates = [...agents.entries()]
+        .filter(([n]) => n !== (data.agent || names[0]))
+        .map(([n, a]) => {
+          const o = a.getObservation()
+          return `${n}@[${(o.pos || []).join(',')}]`
+        })
+      return ws.send(JSON.stringify({ ok: true, observation }))
     }
     try {
       if (data.type === 'skill') {

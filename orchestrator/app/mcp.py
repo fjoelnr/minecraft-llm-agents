@@ -76,6 +76,10 @@ def build_mcp_from_obs(agent_id: str, goal: str, obs: dict[str, Any]) -> dict[st
         goal=goal,
         env=env,
         inventory=obs.get("inventory") or {},
+        team=MCPTeam(
+            teammates=obs.get("teammates") or [],
+            messages=obs.get("recent_chat") or [],
+        ),
     )
     return _order_mcp(ctx.model_dump())
 

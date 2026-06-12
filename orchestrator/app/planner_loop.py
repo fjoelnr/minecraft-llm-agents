@@ -81,36 +81,62 @@ def _log_path() -> str:
     return os.path.join(runs, f"plan-{time.strftime('%Y%m%d-%H%M%S')}.jsonl")
 
 
-async def run(goal: str, agent_id: str, ticks: int, url: str | None = None) -> None:
+async def run(
+    goal: str,
+    agents: list[str],
+    ticks: int = 0,
+    minutes: float = 0.0,
+    url: str | None = None,
+) -> None:
+    """Drive one or more agents round-robin, each with its own step memory."""
     gw = GatewayClient(
         url=url or os.getenv("GATEWAY_URL", "ws://localhost:3000"),
         timeout_s=float(os.getenv("GATEWAY_TIMEOUT", "90")),
     )
     interval = float(os.getenv("TICK_INTERVAL", "1"))
-    history: list[dict[str, Any]] = []
+    histories: dict[str, list[dict[str, Any]]] = {a: [] for a in agents}
+    done: set[str] = set()
     log_path = _log_path()
-    print(f"goal: {goal}\nagent: {agent_id}\nlog: {os.path.abspath(log_path)}\n")
+    deadline = time.time() + minutes * 60 if minutes else None
+    print(f"goal: {goal}\nagents: {', '.join(agents)}\nlog: {os.path.abspath(log_path)}\n")
 
+    rnd = 0
     with open(log_path, "a", encoding="utf-8") as log:
-        for i in range(ticks):
-            out = await skill_tick(gw, agent_id, goal, history)
-            log.write(json.dumps({"ts": time.time(), "tick": i + 1, "agent": agent_id, **out}, ensure_ascii=False) + "\n")
-            log.flush()
-            if out.get("done"):
-                print(f"[tick {i + 1}] DONE — inventory: {out.get('inventory')}")
+        while True:
+            rnd += 1
+            for agent_id in agents:
+                if agent_id in done:
+                    continue
+                out = await skill_tick(gw, agent_id, goal, histories[agent_id])
+                log.write(json.dumps({"ts": time.time(), "round": rnd, "agent": agent_id, **out}, ensure_ascii=False) + "\n")
+                log.flush()
+                if out.get("done"):
+                    print(f"[r{rnd} {agent_id}] DONE — inventory: {out.get('inventory')}")
+                    done.add(agent_id)
+                    continue
+                print(f"[r{rnd} {agent_id}] {out.get('skill')}({out.get('args')}) -> {_summary(out.get('result', {}))}")
+                await asyncio.sleep(interval)
+            if len(done) == len(agents):
                 break
-            print(f"[tick {i + 1}] {out.get('skill')}({out.get('args')}) -> {_summary(out.get('result', {}))}")
-            await asyncio.sleep(interval)
-    print("\nfinal inventory:", json.dumps((await gw.observe(agent_id)).get("observation", {}).get("inventory", {})))
+            if ticks and rnd >= ticks:
+                break
+            if deadline and time.time() >= deadline:
+                break
+    for agent_id in agents:
+        inv = (await gw.observe(agent_id)).get("observation", {}).get("inventory", {})
+        print(f"final {agent_id}: {json.dumps(inv, ensure_ascii=False)}")
 
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Run the skill-planning agent loop.")
     p.add_argument("--goal", default="Craft a wooden pickaxe, then mine some stone.")
-    p.add_argument("--agent", default="Agent1")
-    p.add_argument("--ticks", type=int, default=14)
+    p.add_argument("--agents", default="Agent1", help="comma-separated agent names")
+    p.add_argument("--ticks", type=int, default=0, help="number of rounds (0 = use --minutes)")
+    p.add_argument("--minutes", type=float, default=0.0, help="run duration in minutes")
     args = p.parse_args()
-    asyncio.run(run(args.goal, args.agent, args.ticks))
+    agents = [a.strip() for a in args.agents.split(",") if a.strip()]
+    ticks = args.ticks or (0 if args.minutes else 14)
+    asyncio.run(run(args.goal, agents, ticks=ticks, minutes=args.minutes))
 
 
 if __name__ == "__main__":
