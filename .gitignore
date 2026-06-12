@@ -26,3 +26,6 @@ sandbox-server/*.pid
 orchestrator/.venv/
 orchestrator/runs/
 sandbox-server/run.log
+bot-gateway/gateway.log
+bot-gateway/gateway.err.log
+bot-gateway/*.pid
