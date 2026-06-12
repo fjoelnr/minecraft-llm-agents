@@ -105,6 +105,10 @@ SKILL_INSTRUCTIONS = (
     "(RECENT_STEPS). Think about prerequisites: to craft you need ingredients; a "
     "wooden_pickaxe needs planks+sticks and a crafting table; to mine stone/ores you "
     "need a pickaxe first.\n"
+    "IMPORTANT: check STATE.inventory FIRST — if it already contains what the goal "
+    "asks for, do not gather more; report via chat and use done. "
+    "If STATE.env.time_of_day is night, monsters are out: prefer build_shelter or "
+    "staying put over wandering.\n"
     "Available skills:\n"
     '  {"skill":"collect","args":{"type":"<block>","count":<int>}}  gather blocks (e.g. spruce_log, stone)\n'
     '  {"skill":"craft","args":{"item":"<item>","count":<int>}}     craft (auto-handles the crafting table)\n'

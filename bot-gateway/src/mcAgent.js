@@ -45,6 +45,11 @@ export class McAgent {
           this.chatLog.push({ from: username, text: message, ts: Date.now() })
           if (this.chatLog.length > 20) this.chatLog.shift()
         })
+        this.deaths = 0
+        bot.on('death', () => {
+          this.deaths++
+          console.log(`[${this.opts.username}] died (#${this.deaths})`)
+        })
         this.ready = true
         resolve(this)
       })
@@ -73,6 +78,7 @@ export class McAgent {
       inventory: inventoryMap(bot),
       health: bot.health ?? null,
       food: bot.food ?? null,
+      deaths: this.deaths || 0,
       recent_chat: this.chatLog.slice(-5).map((c) => `${c.from}: ${c.text}`)
     }
   }

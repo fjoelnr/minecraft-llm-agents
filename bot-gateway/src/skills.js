@@ -13,14 +13,28 @@ import { Vec3 } from 'vec3'
 
 const { goals } = pathfinderPkg
 
+// Items that come from mining a DIFFERENT block — searching the world for
+// "cobblestone" finds almost nothing, the natural source is stone.
+const COLLECT_ALIASES = {
+  cobblestone: ['cobblestone', 'stone'],
+  coal: ['coal_ore', 'deepslate_coal_ore'],
+  raw_copper: ['copper_ore', 'deepslate_copper_ore'],
+  raw_iron: ['iron_ore', 'deepslate_iron_ore'],
+  diamond: ['diamond_ore', 'deepslate_diamond_ore']
+}
+
 /** Collect `count` blocks of a type: find -> navigate -> mine -> pick up drops. */
 export async function collect (bot, { type, count = 1 }) {
   const mcData = minecraftData(bot.version)
-  const blockType = mcData.blocksByName[type]
-  if (!blockType) return { ok: false, error: `unknown block: ${type}` }
+  const candidates = (COLLECT_ALIASES[type] || [type])
+    .map((n) => mcData.blocksByName[n])
+    .filter(Boolean)
+  if (!candidates.length) return { ok: false, error: `unknown block: ${type}` }
+  const blockType = candidates[0]
 
-  const positions = bot.findBlocks({ matching: blockType.id, maxDistance: 32, count: Math.max(count * 3, 8) })
-  if (!positions.length) return { ok: false, error: `no ${type} within range` }
+  const ids = candidates.map((b) => b.id)
+  const positions = bot.findBlocks({ matching: ids, maxDistance: 32, count: Math.max(count * 3, 8) })
+  if (!positions.length) return { ok: false, error: `no ${candidates.map((b) => b.name).join('/')} within range` }
 
   // Refuse blocks we cannot harvest with current tools (e.g. stone bare-handed):
   // digging would drop nothing, and collectBlock spins itself into OOM retrying.
